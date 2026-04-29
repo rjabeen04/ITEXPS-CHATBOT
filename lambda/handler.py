@@ -15,12 +15,9 @@ BUCKET = "itexps-chatbot-kb"
 PREFIX = "kb/"   # folder containing your JSON files
 
 # ============================================================
-# 3. CLAUDE MODEL (NO TITAN EMBEDDINGS)
+# 3. NOVA MICRO MODEL
 # ============================================================
-CLAUDE_INFERENCE_PROFILE_ARN = (
-    "arn:aws:bedrock:us-east-1:378494867598:"
-    "inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
+NOVA_MICRO_ARN = "arn:aws:bedrock:us-east-1:378494867598:inference-profile/us.amazon.nova-micro-v1:0"
 
 # ============================================================
 # 4. CORS HEADERS
@@ -54,48 +51,94 @@ def load_knowledge_base():
         kb_entries.append({
             "key": key,
             "title": data.get("title", ""),
-            "content": data.get("content", "")
+            "content": data.get("content", ""),
+            "url": data.get("url", "https://itexps.com")
         })
     return kb_entries
 
 # ============================================================
-# 6. IMPROVED KEYWORD MATCHING (NO EMBEDDINGS)
+# 6. KEYWORD PRIORITY MAP + MATCHING
 # ============================================================
-def find_best_match(question, kb):
-    q = question.lower()
+KEYWORDS_MAP = {
+    # Education & Grants
+    "grant":     "educationgrantprogram.json",
+    "wioa":      "educationgrantprogram.json",
+    "mycaa":     "educationgrantprogram.json",
+    "army":      "educationgrantprogram.json",
+    # Proctoring
+    "proctor":   "proctoringservices.json",
+    "exam":      "proctoringservices.json",
+    "testing":   "proctoringservices.json",
+    "certif":    "proctoringservices.json",
+    # IT Staffing
+    "staff":     "itstaffing.json",
+    "hire":      "itstaffing.json",
+    "recruit":   "itstaffing.json",
+    # FAQ
+    "faq":       "faq.json",
+    # Upcoming Training
+    "upcoming":  "upcomingtraining.json",
+    "schedule":  "upcomingtraining.json",
+    "register":  "upcomingtraining.json",
+    # Specialized Career Path
+    "career":    "specializedcareerpath.json",
+    "path":      "specializedcareerpath.json",
+    "specialized": "specializedcareerpath.json",
+    # Technical & Training
+    "train":     "technicalmanagementprograms.json",
+    "devops":    "technicalmanagementprograms.json",
+    "technical": "technicalmanagementprograms.json",
+    "program":   "programs.json",
+    "service":   "programs.json",
+    # General
+    "history":   "about_us.json",
+    "contact":   "contact.json",
+    "phone":     "contact.json",
+    "email":     "contact.json",
+    "location":  "contact.json",
+}
 
+def find_best_match(question, kb):
+    q_words = question.lower().translate(str.maketrans('', '', '?!.,\'')).split()
+
+    STOP_WORDS = {"what", "is", "the", "how", "do", "i", "a", "an", "of", "for",
+                  "to", "tell", "me", "about", "are", "can", "you", "your", "us",
+                  "we", "my", "in", "on", "at", "and", "or", "it", "this", "that"}
+
+    # Priority: keyword map with substring match, longer keys first
+    for word in q_words:
+        if word in STOP_WORDS:
+            continue
+        for base_key, target in sorted(KEYWORDS_MAP.items(), key=lambda x: -len(x[0])):
+            if base_key in word:
+                match = next((e for e in kb if target in e["key"]), None)
+                if match:
+                    return match
+
+    # Fallback: word hit counter
     best_entry = None
     max_hits = 0
-
     for entry in kb:
-        content = entry["content"].lower()
-        title = entry["title"].lower()
-
-        # Count how many words from the question appear in title or content
-        hits = sum(
-            1 for word in q.split()
-            if word in content or word in title
-        )
-
+        combined = (entry["content"] + " " + entry["title"]).lower()
+        hits = sum(1 for w in q_words if w not in STOP_WORDS and w in combined)
         if hits > max_hits:
             max_hits = hits
             best_entry = entry
 
-    # If nothing matched, fall back to "home" or first file
-    if best_entry is None:
-        for entry in kb:
-            if entry["title"].lower() == "home":
-                return entry
-        return kb[0]
-
-    return best_entry
+    return best_entry or next((e for e in kb if "home" in e["key"]), kb[0])
 
 # ============================================================
 # 7. GENERATE ANSWER USING CLAUDE
 # ============================================================
-def generate_answer(context_text, question):
+def generate_answer(context_text, question, page_title, page_url):
     prompt = f"""
 You are an ITEXPS assistant. Answer ONLY using the content below.
+Be concise and professional.
+
+STRICT FORMATTING RULE:
+At the end of your answer, provide EXACTLY ONE clickable link in this format:
+[{page_title}]({page_url})
+Do NOT repeat the raw URL in the text.
 
 --------------------
 CONTEXT:
@@ -105,32 +148,16 @@ CONTEXT:
 USER QUESTION:
 {question}
 
-If the answer is not found in the context, respond exactly with:
-"I don't know based on the website."
+If the answer is not found in the context, respond with:
+"I don't have that specific info. Please call 847-350-9034 or visit [Contact Us](https://www.itexps.net/contact-us)."
 """
 
-    request_body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 300,
-        "temperature": 0.2,
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": prompt}]}
-        ]
-    }
-
-    res = bedrock.invoke_model(
-        modelId=CLAUDE_INFERENCE_PROFILE_ARN,
-        body=json.dumps(request_body),
-        contentType="application/json",
-        accept="application/json",
+    response = bedrock.converse(
+        modelId=NOVA_MICRO_ARN,
+        messages=[{"role": "user", "content": [{"text": prompt}]}],
+        inferenceConfig={"maxTokens": 300, "temperature": 0.1, "topP": 0.9}
     )
-
-    payload = json.loads(res["body"].read())
-
-    if "content" in payload and len(payload["content"]) > 0:
-        return payload["content"][0]["text"]
-
-    return "I don't know based on the website."
+    return response["output"]["message"]["content"][0]["text"]
 
 # ============================================================
 # 8. MAIN LAMBDA HANDLER
@@ -161,7 +188,7 @@ def lambda_handler(event, context):
         selected_entry = find_best_match(question, KB_CACHE)
 
         # Generate answer using Claude
-        answer = generate_answer(selected_entry["content"], question)
+        answer = generate_answer(selected_entry["content"], question, selected_entry["title"], selected_entry["url"])
 
         return {
             "statusCode": 200,
