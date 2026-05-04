@@ -1,21 +1,38 @@
 # ITExps AI Chatbot & Infrastructure
+🏗️ System Architecture
 
-A serverless, RAG-based (Retrieval-Augmented Generation) AI chatbot designed to provide intelligent, context-aware responses. This project leverages AWS serverless architecture and is fully provisioned using Terraform.
+A serverless RAG-based AI chatbot built on AWS that enables context-aware responses using a modular, production-style cloud architecture. The system is fully provisioned using Terraform and integrates AI services with secure backend design principles.
 
-## 🚀 Architecture Overview
-The system uses a modular landing zone architecture to deploy a secure and scalable AI environment.
+🚀 Architecture Overview
 
-*   **AI/ML:** AWS Bedrock for LLM orchestration and AWS Rekognition for biometric security.
-*   **Backend:** AWS Lambda (Python) handles the core logic and Converse API calls.
-*   **Infrastructure:** Managed via **Terraform** (Infrastructure as Code) for repeatable deployments.
-*   **Security:** Scoped IAM roles following the principle of least privilege.
-*   **Storage:** Amazon S3 for data ingestion and project archives.
+This project follows a modular landing zone approach to design a scalable and secure AI system on AWS.
 
-## 📂 Project Structure
-```text
+AI/ML: AWS Bedrock (Claude) for LLM orchestration and AWS Rekognition for biometric verification
+Backend: AWS Lambda (Python) handling RAG logic and API execution
+Infrastructure: Terraform used for full Infrastructure-as-Code automation
+Security: IAM roles designed with least-privilege access control
+Storage: Amazon S3 for ingestion data and artifact management
+🔑 Key Features
+Fully serverless cloud-native architecture
+RAG-based chatbot powered by AWS Bedrock
+End-to-end Infrastructure as Code using Terraform
+Secure biometric authentication using AWS Rekognition
+Modular and reusable cloud components
+🧠 Architecture Decisions
+
+Why AWS Bedrock instead of OpenAI?
+→ Native AWS integration, easier IAM control, and enterprise-grade security alignment
+
+Why AWS Lambda instead of EC2?
+→ Event-driven execution, auto-scaling, and zero server management
+
+Why Terraform instead of CloudFormation?
+→ Better modularity, multi-cloud capability, and reusable infrastructure patterns
+
+📂 Project Structure
 .
-├── terraform/          # IaC modules (IAM, Lambda, S3, Provider setup)
-├── lambda/             # Python-based Lambda handlers (handler.py)
-├── frontend/           # Integration files for Wix/Web platforms
-├── data_ingestion/     # Scripts for processing RAG data
-└── archive/            # Deployment packages and historical artifacts
+├── terraform/          # Infrastructure modules (IAM, Lambda, S3, provider config)
+├── lambda/             # Python Lambda functions (core RAG logic)
+├── frontend/           # UI integration (web/Wix)
+├── data_ingestion/     # Data processing for RAG pipeline
+└── archive/            # Deployment artifacts and backups
