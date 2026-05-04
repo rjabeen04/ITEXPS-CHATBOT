@@ -1,3 +1,9 @@
-data/kb.json
-data/site.txt
-
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+*.zip
+.DS_Store
+node_modules/
+.env
+lambda/Tushar/
