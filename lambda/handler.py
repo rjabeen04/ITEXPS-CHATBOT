@@ -1,5 +1,6 @@
 import json
 import boto3
+import os
 from botocore.exceptions import ClientError
 
 # ============================================================
@@ -11,13 +12,14 @@ bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
 # ============================================================
 # 2. S3 CONFIGURATION
 # ============================================================
-BUCKET = "itexps-chatbot-kb"
+BUCKET = os.environ["S3_BUCKET"]
 PREFIX = "kb/"   # folder containing your JSON files
 
 # ============================================================
 # 3. NOVA MICRO MODEL
 # ============================================================
-NOVA_MICRO_ARN = "arn:aws:bedrock:us-east-1:378494867598:inference-profile/us.amazon.nova-micro-v1:0"
+
+NOVA_MICRO_ARN = os.environ["BEDROCK_MODEL_ARN"]
 
 # ============================================================
 # 4. CORS HEADERS
