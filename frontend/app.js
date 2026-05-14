@@ -3,7 +3,8 @@ const queryInput = document.getElementById('q');
 const sendBtn    = document.getElementById('send-btn');
 const chatCenter = document.getElementById('chat-center');
 const reopenBtn  = document.getElementById('reopen-btn');
-const API_URL    = "https://0sobzbid25.execute-api.us-east-1.amazonaws.com/ask";
+const API_URL = process.env.API_URL;
+
 
 document.getElementById('close-btn').addEventListener('click', () => {
     chatCenter.style.display = 'none';
